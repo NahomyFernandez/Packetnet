@@ -52,3 +52,13 @@ export interface ChatMessage {
     sender: 'user' | 'ai';
     text: string;
 }
+export interface UserProfile {
+  uid: string;
+  email: string;
+  name: string;
+  // Puedes añadir más campos como dirección, teléfono, etc.
+  address?: {
+    street: string;
+    city: string;
+  };
+}

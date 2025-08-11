@@ -5,6 +5,7 @@ import Button from '../components/ui/Button';
 import { auth } from '../services/firebase';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
 import { useAuth } from '../App'; // Importamos el hook de autenticación
+import { createUserProfile } from '../services/firestoreService';
 
 const RegisterPage: React.FC = () => {
     const { isAuthenticated } = useAuth();
@@ -18,14 +19,17 @@ const RegisterPage: React.FC = () => {
         return <Navigate to="/start" />;
     }
 
-    const handleSignUp = async (e: React.FormEvent) => {
+   const handleSignUp = async (e: React.FormEvent) => {
         e.preventDefault();
         if (isSubmitting) return;
         setIsSubmitting(true);
         setError(null);
         if (email && password) {
              try {
-                await createUserWithEmailAndPassword(auth, email, password);
+                // 2. Crear el usuario en Auth
+                const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+                // 3. Crear el perfil en Firestore
+                await createUserProfile(userCredential.user);
                 // El onAuthStateChanged en App.tsx se encargará de redirigir
             } catch (err: any) {
                 setError(getFirebaseErrorMessage(err.code));
@@ -34,8 +38,7 @@ const RegisterPage: React.FC = () => {
             setError("Por favor, ingresa correo y contraseña para registrarte.");
         }
         setIsSubmitting(false);
-    }
-    
+    };
     // Función para traducir los errores de Firebase a mensajes amigables
     const getFirebaseErrorMessage = (errorCode: string) => {
         switch (errorCode) {

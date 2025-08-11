@@ -1,45 +1,106 @@
-import React from 'react';
+// pages/ProfilePage.tsx
+import React, { useState, useEffect } from 'react';
 import Button from '../components/ui/Button';
+import { useAuth } from '../App'; // Para obtener el usuario actual
+import { getUserProfile, updateUserProfile } from '../services/firestoreService'; // Para interactuar con Firestore
+import type { UserProfile } from '../types'; // Para el tipado del perfil
 
 const ProfilePage: React.FC = () => {
-    // Mock data
-    const user = {
-        name: 'Alex Doe',
-        email: 'alex.doe@example.com',
+    const { user } = useAuth(); // Obtenemos el usuario autenticado
+    const [profile, setProfile] = useState<UserProfile | null>(null);
+    const [isLoading, setIsLoading] = useState(true);
+    const [isEditing, setIsEditing] = useState(false);
+
+    // Cargar el perfil del usuario cuando el componente se monta
+    useEffect(() => {
+        if (user) {
+            setIsLoading(true);
+            getUserProfile(user.uid)
+                .then(userProfile => {
+                    setProfile(userProfile);
+                })
+                .catch(error => console.error("Error al obtener el perfil:", error))
+                .finally(() => setIsLoading(false));
+        }
+    }, [user]);
+
+    const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (!profile) return;
+        setProfile({ ...profile, [e.target.name]: e.target.value });
     };
+    
+    const handleSaveChanges = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!user || !profile) return;
+        
+        try {
+            await updateUserProfile(user.uid, { name: profile.name, email: profile.email });
+            alert("Perfil actualizado con éxito");
+            setIsEditing(false);
+        } catch (error) {
+            console.error("Error al actualizar el perfil:", error);
+            alert("Hubo un error al guardar los cambios.");
+        }
+    };
+    
+    if (isLoading) {
+        return <div className="text-center p-8">Cargando perfil...</div>;
+    }
+    
+    if (!profile) {
+        return <div className="text-center p-8">No se pudo cargar el perfil del usuario.</div>;
+    }
+
+    // Mock data (la mantendremos para los pedidos por ahora)
     const orders = [
         { id: 'ORD-12345', date: '2024-05-20', total: 4200, status: 'Enviado', tracking: '1Z9999W99999999999' },
         { id: 'ORD-12344', date: '2024-05-15', total: 2800, status: 'Entregado', tracking: null },
     ];
-    const addresses = [
-        { type: 'Envío', street: '123 Tech Lane', city: 'Silicon Valley, CA 94043' },
-        { type: 'Facturación', street: '456 Data Drive', city: 'Cyber City, TX 75001' },
-    ];
 
     return (
         <div className="space-y-8">
-            <h1 className="text-3xl font-bold">Mi Perfil</h1>
-
-            {/* Dashboard Summary */}
-            <div className="bg-white p-6 rounded-xl shadow-sm border border-stone-200">
-                <h2 className="text-xl font-bold mb-4">Dashboard</h2>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                        <h3 className="font-semibold">Información de Contacto</h3>
-                        <p>{user.name}</p>
-                        <p>{user.email}</p>
-                    </div>
-                     <div>
-                        <h3 className="font-semibold">Último Pedido</h3>
-                        <p>ID: {orders[0].id} - ${orders[0].total.toLocaleString()}</p>
-                        <p>Estado: <span className="font-medium text-cyan-600">{orders[0].status}</span></p>
-                    </div>
-                </div>
+            <div className="flex justify-between items-center">
+                <h1 className="text-3xl font-bold">Mi Perfil</h1>
+                <Button onClick={() => setIsEditing(!isEditing)} variant="secondary">
+                    {isEditing ? 'Cancelar' : 'Editar Perfil'}
+                </Button>
             </div>
-
-            {/* My Orders */}
+            
+            {/* Formulario de Información */}
             <div className="bg-white p-6 rounded-xl shadow-sm border border-stone-200">
-                <h2 className="text-xl font-bold mb-4">Mis Pedidos</h2>
+                <h2 className="text-xl font-bold mb-4">Mi Información</h2>
+                <form className="space-y-4" onSubmit={handleSaveChanges}>
+                    <div>
+                        <label className="block text-sm font-medium">Nombre</label>
+                        <input 
+                            type="text" 
+                            name="name"
+                            value={profile.name} 
+                            onChange={handleInputChange}
+                            disabled={!isEditing}
+                            className="mt-1 block w-full rounded-md border-stone-300 shadow-sm bg-stone-50 disabled:bg-stone-200 disabled:text-stone-500"
+                        />
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium">Correo Electrónico</label>
+                        <input 
+                            type="email" 
+                            name="email"
+                            value={profile.email} 
+                            onChange={handleInputChange}
+                            disabled // No permitimos editar el email usualmente
+                            className="mt-1 block w-full rounded-md border-stone-300 shadow-sm bg-stone-200 text-stone-500"
+                        />
+                    </div>
+                    {isEditing && (
+                        <Button type="submit" variant="primary">Guardar Cambios</Button>
+                    )}
+                </form>
+            </div>
+            
+            {/* Mis Pedidos (usa datos mock por ahora) */}
+            <div className="bg-white p-6 rounded-xl shadow-sm border border-stone-200">
+                 <h2 className="text-xl font-bold mb-4">Mis Pedidos</h2>
                 <div className="overflow-x-auto">
                     <table className="w-full text-left">
                         <thead>
@@ -65,38 +126,6 @@ const ProfilePage: React.FC = () => {
                     </table>
                 </div>
             </div>
-
-            {/* My Info & Addresses */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                <div className="bg-white p-6 rounded-xl shadow-sm border border-stone-200">
-                    <h2 className="text-xl font-bold mb-4">Mi Información</h2>
-                    <form className="space-y-4">
-                        <div>
-                            <label className="block text-sm font-medium">Nombre</label>
-                            <input type="text" defaultValue={user.name} className="mt-1 block w-full rounded-md border-stone-300 shadow-sm bg-stone-50"/>
-                        </div>
-                        <div>
-                            <label className="block text-sm font-medium">Correo Electrónico</label>
-                            <input type="email" defaultValue={user.email} className="mt-1 block w-full rounded-md border-stone-300 shadow-sm bg-stone-50"/>
-                        </div>
-                         <Button type="submit" variant="secondary">Guardar Cambios</Button>
-                    </form>
-                </div>
-                <div className="bg-white p-6 rounded-xl shadow-sm border border-stone-200">
-                    <h2 className="text-xl font-bold mb-4">Direcciones</h2>
-                    <div className="space-y-4">
-                        {addresses.map(addr => (
-                            <div key={addr.type}>
-                                <h3 className="font-semibold">{addr.type}</h3>
-                                <p className="text-stone-600">{addr.street}</p>
-                                <p className="text-stone-600">{addr.city}</p>
-                            </div>
-                        ))}
-                    </div>
-                     <Button variant="secondary" className="mt-4">Añadir Dirección</Button>
-                </div>
-            </div>
-
         </div>
     );
 };
