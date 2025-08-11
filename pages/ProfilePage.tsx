@@ -1,29 +1,47 @@
 // pages/ProfilePage.tsx
 import React, { useState, useEffect } from 'react';
 import Button from '../components/ui/Button';
-import { useAuth } from '../App'; // Para obtener el usuario actual
-import { getUserProfile, updateUserProfile } from '../services/firestoreService'; // Para interactuar con Firestore
-import type { UserProfile } from '../types'; // Para el tipado del perfil
+import { useAuth } from '../App';
+// Importamos también createUserProfile
+import { getUserProfile, updateUserProfile, createUserProfile } from '../services/firestoreService'; 
+import type { UserProfile } from '../types';
 
 const ProfilePage: React.FC = () => {
-    const { user } = useAuth(); // Obtenemos el usuario autenticado
+    const { user } = useAuth();
     const [profile, setProfile] = useState<UserProfile | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [isEditing, setIsEditing] = useState(false);
 
-    // Cargar el perfil del usuario cuando el componente se monta
     useEffect(() => {
-        if (user) {
-            setIsLoading(true);
-            getUserProfile(user.uid)
-                .then(userProfile => {
-                    setProfile(userProfile);
-                })
-                .catch(error => console.error("Error al obtener el perfil:", error))
-                .finally(() => setIsLoading(false));
-        }
-    }, [user]);
+        const loadProfile = async () => {
+            if (!user) return;
 
+            setIsLoading(true);
+            try {
+                let userProfile = await getUserProfile(user.uid);
+                
+                // --- ¡AQUÍ ESTÁ LA MAGIA! ---
+                // Si el perfil no existe en Firestore, lo creamos ahora mismo.
+                if (!userProfile) {
+                    console.log("Perfil no encontrado, creando uno nuevo...");
+                    await createUserProfile(user); // Creamos el perfil
+                    userProfile = await getUserProfile(user.uid); // Y lo volvemos a cargar
+                }
+                
+                setProfile(userProfile);
+
+            } catch (error) {
+                console.error("Error al obtener o crear el perfil:", error);
+                setProfile(null); // Aseguramos que el perfil sea nulo en caso de error
+            } finally {
+                setIsLoading(false);
+            }
+        };
+
+        loadProfile();
+    }, [user]); // La dependencia sigue siendo el usuario
+
+    // ... (el resto del componente se mantiene exactamente igual)
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (!profile) return;
         setProfile({ ...profile, [e.target.name]: e.target.value });
@@ -48,25 +66,22 @@ const ProfilePage: React.FC = () => {
     }
     
     if (!profile) {
-        return <div className="text-center p-8">No se pudo cargar el perfil del usuario.</div>;
+        return <div className="text-center p-8">No se pudo cargar el perfil del usuario. Por favor, intenta recargar la página.</div>;
     }
 
-    // Mock data (la mantendremos para los pedidos por ahora)
     const orders = [
         { id: 'ORD-12345', date: '2024-05-20', total: 4200, status: 'Enviado', tracking: '1Z9999W99999999999' },
         { id: 'ORD-12344', date: '2024-05-15', total: 2800, status: 'Entregado', tracking: null },
     ];
-
+    
     return (
-        <div className="space-y-8">
+      <div className="space-y-8">
             <div className="flex justify-between items-center">
                 <h1 className="text-3xl font-bold">Mi Perfil</h1>
                 <Button onClick={() => setIsEditing(!isEditing)} variant="secondary">
                     {isEditing ? 'Cancelar' : 'Editar Perfil'}
                 </Button>
             </div>
-            
-            {/* Formulario de Información */}
             <div className="bg-white p-6 rounded-xl shadow-sm border border-stone-200">
                 <h2 className="text-xl font-bold mb-4">Mi Información</h2>
                 <form className="space-y-4" onSubmit={handleSaveChanges}>
@@ -88,7 +103,7 @@ const ProfilePage: React.FC = () => {
                             name="email"
                             value={profile.email} 
                             onChange={handleInputChange}
-                            disabled // No permitimos editar el email usualmente
+                            disabled
                             className="mt-1 block w-full rounded-md border-stone-300 shadow-sm bg-stone-200 text-stone-500"
                         />
                     </div>
@@ -98,7 +113,6 @@ const ProfilePage: React.FC = () => {
                 </form>
             </div>
             
-            {/* Mis Pedidos (usa datos mock por ahora) */}
             <div className="bg-white p-6 rounded-xl shadow-sm border border-stone-200">
                  <h2 className="text-xl font-bold mb-4">Mis Pedidos</h2>
                 <div className="overflow-x-auto">
@@ -129,5 +143,4 @@ const ProfilePage: React.FC = () => {
         </div>
     );
 };
-
 export default ProfilePage;
