@@ -1,20 +1,34 @@
 import React, { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { ICONS } from '../constants';
 import Button from '../components/ui/Button';
 import { auth } from '../services/firebase';
 import { 
   signInWithEmailAndPassword, 
-  createUserWithEmailAndPassword, 
   GoogleAuthProvider, 
   signInWithPopup 
 } from 'firebase/auth';
 
 const LoginPage: React.FC = () => {
-    // La lógica de autenticación permanece sin cambios.
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [error, setError] = useState<string | null>(null);
+
+    // 1. MOVEMOS LA FUNCIÓN AQUÍ (ANTES DE USARLA)
+    const getFirebaseErrorMessage = (errorCode: string) => {
+        switch (errorCode) {
+            case 'auth/invalid-email':
+                return 'El formato del correo electrónico no es válido.';
+            case 'auth/user-not-found':
+            case 'auth/wrong-password':
+                 return 'Correo electrónico o contraseña incorrectos.';
+            case 'auth/popup-closed-by-user':
+                return 'El proceso de inicio de sesión fue cancelado.';
+            default:
+                return 'Ocurrió un error. Por favor, inténtalo de nuevo.';
+        }
+    };
 
     const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -40,45 +54,10 @@ const LoginPage: React.FC = () => {
         const provider = new GoogleAuthProvider();
         try {
             await signInWithPopup(auth, provider);
-        } catch (err: any) {
+        } catch (err: any) { // 2. CORREGIMOS EL ERROR DE SINTAXIS AQUÍ (quitamos el =>)
             setError(getFirebaseErrorMessage(err.code));
         }
         setIsSubmitting(false);
-    };
-    
-    const handleSignUp = async () => {
-        if (isSubmitting) return;
-        setIsSubmitting(true);
-        setError(null);
-        if (email && password) {
-             try {
-                await createUserWithEmailAndPassword(auth, email, password);
-            } catch (err: any) {
-                setError(getFirebaseErrorMessage(err.code));
-            }
-        } else {
-            setError("Por favor, ingresa correo y contraseña para registrarte.");
-        }
-        setIsSubmitting(false);
-    }
-    
-    // Función para traducir los errores de Firebase a mensajes amigables
-    const getFirebaseErrorMessage = (errorCode: string) => {
-        switch (errorCode) {
-            case 'auth/invalid-email':
-                return 'El formato del correo electrónico no es válido.';
-            case 'auth/user-not-found':
-            case 'auth/wrong-password':
-                 return 'Correo electrónico o contraseña incorrectos.';
-            case 'auth/email-already-in-use':
-                return 'Este correo electrónico ya está registrado.';
-            case 'auth/weak-password':
-                return 'La contraseña debe tener al menos 6 caracteres.';
-            case 'auth/popup-closed-by-user':
-                return 'El proceso de inicio de sesión fue cancelado.';
-            default:
-                return 'Ocurrió un error. Por favor, inténtalo de nuevo.';
-        }
     };
 
     return (
@@ -146,7 +125,7 @@ const LoginPage: React.FC = () => {
                             <div className="w-full border-t border-stone-300" />
                         </div>
                         <div className="relative flex justify-center text-sm">
-                            <span className="px-2 bg-white text-stone-500">o continúa con</span>
+                            <span className="px-2 bg-stone-50 text-stone-500">o continúa con</span>
                         </div>
                     </div>
 
@@ -165,13 +144,12 @@ const LoginPage: React.FC = () => {
 
                      <p className="mt-8 text-center text-sm text-stone-500">
                         ¿No tienes una cuenta?{' '}
-                        <button onClick={handleSignUp} className="font-semibold text-cyan-600 hover:text-cyan-500" disabled={isSubmitting}>
+                        <Link to="/register" className="font-semibold text-cyan-600 hover:text-cyan-500">
                             Regístrate aquí
-                        </button>
+                        </Link>
                     </p>
                 </div>
             </div>
-            {/* Columna de Branding */}
             <div 
                 className="hidden lg:flex w-1/2 items-center justify-center p-12 bg-cover bg-center"
                 style={{ backgroundImage: "url('https://images.unsplash.com/photo-1558494949-ef010cbdcc31?q=80&w=2070&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D')" }}

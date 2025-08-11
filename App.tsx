@@ -1,7 +1,7 @@
-
 import { HashRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import type { Product, CartItem } from './types';
 import LoginPage from './pages/LoginPage';
+import RegisterPage from './pages/RegisterPage'; // 1. Importar la nueva página
 import StartPage from './pages/StartPage';
 import HomePage from './pages/HomePage';
 import ProductDetailPage from './pages/ProductDetailPage';
@@ -11,16 +11,15 @@ import ContactPage from './pages/ContactPage';
 import Header from './components/layout/Header';
 import ChatWidget from './components/chat/ChatWidget';
 import React, { useState, createContext, useContext, useMemo, useEffect } from 'react';
-import { auth } from './services/firebase'; // <- Importa el auth
+import { auth } from './services/firebase'; 
 import { onAuthStateChanged, signOut, User } from 'firebase/auth'; 
-// --- CONTEXTS ---
+
+// --- CONTEXTS Y PROVIDERS (sin cambios) ---
 interface AuthContextType {
   isAuthenticated: boolean;
-  user: User | null; // <- Opcional: puedes guardar la info del usuario
-  login: () => void; // Estos ya no los necesitaremos, pero los dejamos por ahora
+  user: User | null;
   logout: () => void;
 }
-
 const AuthContext = createContext<AuthContextType | null>(null);
 
 interface CartContextType {
@@ -32,34 +31,22 @@ interface CartContextType {
 }
 const CartContext = createContext<CartContextType | null>(null);
 
-
-// --- PROVIDERS ---
 const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const isAuthenticated = !!user;
 
   useEffect(() => {
-    // 2. Escucha los cambios de estado de autenticación
     const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
-      setUser(firebaseUser); // Guarda el usuario si está logueado, o null si no
+      setUser(firebaseUser);
     });
-
-    // Limpia el listener cuando el componente se desmonte
     return () => unsubscribe();
   }, []);
 
-  // 3. Modifica la función de logout para usar Firebase
   const logout = () => {
-    signOut(auth).catch((error) => {
-      // Maneja errores aquí si es necesario
-      console.error("Error al cerrar sesión:", error);
-    });
+    signOut(auth).catch((error) => console.error("Error al cerrar sesión:", error));
   };
   
-  // login ya no es necesario aquí, la autenticación se manejará en LoginPage
-  const login = () => {};
-
-  const value = useMemo(() => ({ isAuthenticated, user, login, logout }), [isAuthenticated, user]);
+  const value = useMemo(() => ({ isAuthenticated, user, logout }), [isAuthenticated, user]);
   
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
@@ -103,7 +90,7 @@ const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => 
 };
 
 
-// --- HOOKS ---
+// --- HOOKS (sin cambios) ---
 export const useAuth = () => {
   const context = useContext(AuthContext);
   if (!context) throw new Error('useAuth must be used within an AuthProvider');
@@ -119,11 +106,8 @@ export const useCart = () => {
 // --- LAYOUT & ROUTING ---
 const AppLayout: React.FC = () => {
     const location = useLocation();
-    const isLoginPage = location.pathname === '/login';
-
-    if (isLoginPage) {
-        return <LoginPage />;
-    }
+    // Ya no necesitamos la lógica de isLoginPage aquí
+    // const isLoginPage = location.pathname === '/login';
 
     return (
         <div className="min-h-screen bg-stone-50 text-stone-800 font-sans">
@@ -146,7 +130,13 @@ const AppLayout: React.FC = () => {
 
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const { isAuthenticated } = useAuth();
-    return isAuthenticated ? <>{children}</> : <Navigate to="/login" />;
+    const location = useLocation();
+
+    if (!isAuthenticated) {
+        // Redirigir a login, pero guardar la ruta a la que se quería acceder
+        return <Navigate to="/login" state={{ from: location }} replace />;
+    }
+    return <>{children}</>;
 };
 
 
@@ -166,11 +156,14 @@ const Main = () => {
     const { isAuthenticated } = useAuth();
     return (
         <Routes>
+            {/* Rutas públicas que no requieren autenticación */}
             <Route path="/login" element={isAuthenticated ? <Navigate to="/start" /> : <LoginPage />} />
+            <Route path="/register" element={isAuthenticated ? <Navigate to="/start" /> : <RegisterPage />} /> {/* 2. Añadir la nueva ruta */}
+
+            {/* Rutas protegidas */}
             <Route path="/*" element={<ProtectedRoute><AppLayout /></ProtectedRoute>} />
         </Routes>
     );
 };
-
 
 export default App;
