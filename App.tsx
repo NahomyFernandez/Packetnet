@@ -1,4 +1,4 @@
-import React, { useState, createContext, useContext, useMemo } from 'react';
+
 import { HashRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import type { Product, CartItem } from './types';
 import LoginPage from './pages/LoginPage';
@@ -10,11 +10,14 @@ import ProfilePage from './pages/ProfilePage';
 import ContactPage from './pages/ContactPage';
 import Header from './components/layout/Header';
 import ChatWidget from './components/chat/ChatWidget';
-
+import React, { useState, createContext, useContext, useMemo, useEffect } from 'react';
+import { auth } from './services/firebase'; // <- Importa el auth
+import { onAuthStateChanged, signOut, User } from 'firebase/auth'; 
 // --- CONTEXTS ---
 interface AuthContextType {
   isAuthenticated: boolean;
-  login: () => void;
+  user: User | null; // <- Opcional: puedes guardar la info del usuario
+  login: () => void; // Estos ya no los necesitaremos, pero los dejamos por ahora
   logout: () => void;
 }
 
@@ -32,10 +35,32 @@ const CartContext = createContext<CartContextType | null>(null);
 
 // --- PROVIDERS ---
 const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const login = () => setIsAuthenticated(true);
-  const logout = () => setIsAuthenticated(false);
-  const value = useMemo(() => ({ isAuthenticated, login, logout }), [isAuthenticated]);
+  const [user, setUser] = useState<User | null>(null);
+  const isAuthenticated = !!user;
+
+  useEffect(() => {
+    // 2. Escucha los cambios de estado de autenticación
+    const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
+      setUser(firebaseUser); // Guarda el usuario si está logueado, o null si no
+    });
+
+    // Limpia el listener cuando el componente se desmonte
+    return () => unsubscribe();
+  }, []);
+
+  // 3. Modifica la función de logout para usar Firebase
+  const logout = () => {
+    signOut(auth).catch((error) => {
+      // Maneja errores aquí si es necesario
+      console.error("Error al cerrar sesión:", error);
+    });
+  };
+  
+  // login ya no es necesario aquí, la autenticación se manejará en LoginPage
+  const login = () => {};
+
+  const value = useMemo(() => ({ isAuthenticated, user, login, logout }), [isAuthenticated, user]);
+  
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
 
