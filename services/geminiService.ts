@@ -5,8 +5,7 @@ import { products } from "../data/products";
 // 1) Leer la key desde Vite o, si corres en Node, desde env del servidor
 const apiKey =
   (typeof import.meta !== "undefined" ? import.meta.env.VITE_GEMINI_API_KEY : undefined) ??
-  process.env.GEMINI_API_KEY ??
-  process.env.API_KEY;
+  (typeof process !== "undefined" ? process.env.GEMINI_API_KEY : undefined);
 
 if (!apiKey) {
   console.warn("Falta VITE_GEMINI_API_KEY / GEMINI_API_KEY. AI deshabilitado.");
