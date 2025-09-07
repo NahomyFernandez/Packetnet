@@ -2,34 +2,14 @@ import { GoogleGenAI, type Chat } from "@google/genai";
 import type { Product } from "../types";
 import { products } from "../data/products";
 
-// 1) Leer la key desde Vite o, si corres en Node, desde env del servidor
-// --- LECTOR ROBUSTO DE API KEY ---
-function readApiKey(): string | undefined {
-  // a) Vite (frontend)
-  try {
-    const k = (import.meta as any)?.env?.VITE_GEMINI_API_KEY as string | undefined;
-    if (k) {
-      console.debug("[AI] key source: VITE (ok)");
-      return k;
-    }
-  } catch {}
+// --- ¡CORRECCIÓN DIRECTA! ---
+// Pega tu API Key de Gemini directamente en la siguiente línea,
+// dentro de las comillas.
+const apiKey = "AIzaSyBji5tmHu0FDZ56nHdVsc8bn-MW2a2kJnk"; 
+// -----------------------------
 
-  // b) Node/SSR (si algún día mueves esto a backend)
-  try {
-    const k = (process as any)?.env?.GEMINI_API_KEY as string | undefined;
-    if (k) {
-      console.debug("[AI] key source: process.env (ok)");
-      return k;
-    }
-  } catch {}
-
-  console.debug("[AI] key source: none (FALTA)");
-  return undefined;
-}
-
-const apiKey = readApiKey();
-if (!apiKey) {
-  console.warn("Falta VITE_GEMINI_API_KEY / GEMINI_API_KEY. AI deshabilitado.");
+if (!apiKey || apiKey === "AIzaSyBji5tmHu0FDZ56nHdVsc8bn-MW2a2kJnk") {
+  console.warn("API KEY no encontrada. Pégala en services/geminiService.ts");
 }
 const ai = apiKey ? new GoogleGenAI({ apiKey }) : null;
 
@@ -53,7 +33,7 @@ function initializeChat() {
   if (!ai) return;
   if (!chat) {
     chat = ai.chats.create({
-      model: "gemini-2.5-flash",
+      model: "gemini-2.5-flash", // Asegúrate de que este modelo es correcto
       config: { systemInstruction },
     });
   }
@@ -68,7 +48,7 @@ export const getAIResponse = async (message: string): Promise<string> => {
   if (!chat) return "Failed to initialize AI chat session.";
 
   try {
-    const result = await chat.sendMessageStream({ message }); // 👈 cambio clave
+    const result = await chat.sendMessageStream({ message });
     let fullResponse = "";
     for await (const chunk of result) {
       fullResponse += chunk.text ?? "";
@@ -76,7 +56,7 @@ export const getAIResponse = async (message: string): Promise<string> => {
     return fullResponse || "Lo siento, no obtuve respuesta.";
   } catch (error) {
     console.error("Error getting AI response:", error);
-    chat = null;
+    chat = null; // Reinicia el chat en caso de error
     return "Sorry, I encountered an error. Please try asking again.";
   }
 };
