@@ -59,7 +59,7 @@ export const products: Product[] = [
     category: Category.Routers,
     subCategory: SubCategory.ASR,
     price: 9800,
-    imageUrl: 'https://www.google.com/url?sa=i&url=https%3A%2F%2Fwww.ghekko.com%2Fproduct%2Fcisco-management-port-9-slots-10-gig%2F&psig=AOvVaw2uUCes3gu1b1TU9kvhWXMQ&ust=1757292160969000&source=images&cd=vfe&opi=89978449&ved=0CBUQjRxqFwoTCMjNqo23xY8DFQAAAAAdAAAAABAE',
+    imageUrl: 'https://res.cloudinary.com/dmwxtja1g/image/upload/c_lpad,dpr_1.0,f_auto,h_466,q_80,w_700/v1/media/catalog/product/c/i/cisco_asr1001-x_front_zoom_3_1_1_1.jpg?_i=AB',
     status: ProductStatus.New,
     stock: 15,
     description: 'Cisco ASR 1000 Series Aggregation Services Routers provide a software-defined WAN platform to aggregate traffic from branch sites. They are designed for high performance and reliability at the enterprise edge.',

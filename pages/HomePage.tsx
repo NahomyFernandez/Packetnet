@@ -12,7 +12,7 @@ const ProductCard: React.FC<{ product: Product }> = ({ product }) => {
         <div className="bg-white rounded-xl shadow-md overflow-hidden transition-all duration-300 hover:shadow-lg hover:-translate-y-1 group border border-stone-200">
             <Link to={`/product/${product.id}`}>
                 <div className="relative">
-                    <img src={product.imageUrl} alt={product.name} className="w-full h-56 object-cover" />
+                    <img src={product.imageUrl} alt={product.name} className="w-full h-56 object-contain" />
                     <div className="absolute top-2 left-2 bg-cyan-100 text-cyan-800 text-xs font-bold px-2 py-1 rounded-full">
                        {product.category}
                     </div>
