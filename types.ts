@@ -61,4 +61,22 @@ export interface UserProfile {
     street: string;
     city: string;
   };
+
+}
+export interface OrderItem {
+  productId: string;
+  name: string;
+  quantity: number;
+  price: number;
+}
+
+export interface Order {
+  id: string; // Usaremos un ID autogenerado por Firestore
+  userId: string;
+  createdAt: number; // Usaremos un timestamp de Unix
+  items: OrderItem[];
+  subtotal: number;
+  taxes: number;
+  total: number;
+  status: 'Procesando' | 'Enviado' | 'Entregado' | 'Cancelado';
 }

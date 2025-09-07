@@ -1,44 +1,86 @@
-// services/firestoreService.ts
-import { doc, setDoc, getDoc, updateDoc } from 'firebase/firestore';
-import { db } from './firebase';
-import type { UserProfile } from '../types';
-import type { User } from 'firebase/auth';
+import { db } from "./firebase";
+import {
+  doc, getDoc, setDoc, updateDoc, onSnapshot,
+  serverTimestamp, Timestamp,
+  FieldValue, WithFieldValue, UpdateData
+} from "firebase/firestore";
+import type { User } from "firebase/auth";
 
-/**
- * Crea un nuevo perfil de usuario en Firestore después del registro.
- * @param user El objeto de usuario de Firebase Auth.
- * @param name (Opcional) El nombre inicial para el perfil.
- */
-export const createUserProfile = async (user: User, name: string = 'Nuevo Usuario'): Promise<void> => {
-  const userRef = doc(db, 'users', user.uid);
-  const newUserProfile: UserProfile = {
-    uid: user.uid,
-    email: user.email || '',
-    name: name,
+export type UserProfile = {
+  uid: string;
+  email: string | null;
+  name?: string | null;
+  displayName?: string | null;
+  photoURL?: string | null;
+  phone?: string | null;
+  address?: {
+    line1?: string; line2?: string; city?: string; state?: string;
+    postalCode?: string; country?: string;
   };
-  await setDoc(userRef, newUserProfile);
+  createdAt?: Timestamp | FieldValue;
+  updatedAt?: Timestamp | FieldValue;
 };
 
-/**
- * Obtiene el perfil de un usuario desde Firestore.
- * @param uid El ID del usuario.
- * @returns El perfil del usuario o null si no existe.
- */
-export const getUserProfile = async (uid: string): Promise<UserProfile | null> => {
-  const userRef = doc(db, 'users', uid);
-  const docSnap = await getDoc(userRef);
-  if (docSnap.exists()) {
-    return docSnap.data() as UserProfile;
+export async function createUserProfile(user: User): Promise<void> {
+  if (!user?.uid) return;
+  const ref = doc(db, "users", user.uid);
+  const friendlyName = user.displayName ?? null;
+
+  const data: WithFieldValue<UserProfile> = {
+    uid: user.uid,
+    email: user.email ?? null,
+    name: friendlyName,
+    displayName: friendlyName,
+    photoURL: user.photoURL ?? null,
+    phone: (user as any).phoneNumber ?? null,
+    createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
+  };
+
+  await setDoc(ref, data, { merge: true });
+}
+
+export async function getUserProfile(uid: string): Promise<UserProfile | null> {
+  const ref = doc(db, "users", uid);
+  const snap = await getDoc(ref);
+  if (!snap.exists()) return null;
+  const data = snap.data() as UserProfile;
+  if (data.name && !data.displayName) data.displayName = data.name;
+  if (data.displayName && !data.name) data.name = data.displayName;
+  return data;
+}
+
+export async function updateUserProfile(
+  uid: string,
+  data: Partial<UserProfile>
+): Promise<void> {
+  const ref = doc(db, "users", uid);
+
+  const payload = {
+    ...data,
+    updatedAt: serverTimestamp(),
+  } satisfies UpdateData<UserProfile>;
+
+  if ((payload as any).name && !(payload as any).displayName) {
+    (payload as any).displayName = (payload as any).name;
   }
-  return null;
-};
+  if ((payload as any).displayName && !(payload as any).name) {
+    (payload as any).name = (payload as any).displayName;
+  }
 
-/**
- * Actualiza el perfil de un usuario en Firestore.
- * @param uid El ID del usuario.
- * @param data Los datos parciales a actualizar.
- */
-export const updateUserProfile = async (uid: string, data: Partial<UserProfile>): Promise<void> => {
-  const userRef = doc(db, 'users', uid);
-  await updateDoc(userRef, data);
-};
+  await updateDoc(ref, payload);
+}
+
+export function onUserProfileSnapshot(
+  uid: string,
+  cb: (profile: UserProfile | null) => void
+) {
+  const ref = doc(db, "users", uid);
+  return onSnapshot(ref, (snap) => {
+    if (!snap.exists()) return cb(null);
+    const data = snap.data() as UserProfile;
+    if (data.name && !data.displayName) data.displayName = data.name;
+    if (data.displayName && !data.name) data.name = data.displayName;
+    cb(data);
+  });
+}

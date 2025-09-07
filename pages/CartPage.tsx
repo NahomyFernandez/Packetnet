@@ -1,76 +1,145 @@
-import React from 'react';
-import { useCart } from '../App';
-import { Link } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
 import Button from '../components/ui/Button';
-import { ICONS } from '../constants';
+import { useAuth } from '../App';
+// Importamos también createUserProfile
+import { getUserProfile, updateUserProfile, createUserProfile } from '../services/firestoreService'; 
+import type { UserProfile } from '../types';
 
-const CartPage: React.FC = () => {
-  const { cart, removeFromCart, updateQuantity, itemCount } = useCart();
+const ProfilePage: React.FC = () => {
+    const { user } = useAuth();
+    const [profile, setProfile] = useState<UserProfile | null>(null);
+    const [isLoading, setIsLoading] = useState(true);
+    const [isEditing, setIsEditing] = useState(false);
 
-  const subtotal = cart.reduce((sum, item) => sum + item.product.price * item.quantity, 0);
-  const taxes = subtotal * 0.08; // Example 8% tax
-  const total = subtotal + taxes;
+    useEffect(() => {
+        const loadProfile = async () => {
+            if (!user) return;
 
-  return (
-    <div className="bg-white p-8 rounded-xl shadow-lg border border-stone-200">
-      <h1 className="text-3xl font-bold mb-6 border-b border-stone-200 pb-4">Carrito de Compras</h1>
-      {itemCount === 0 ? (
-        <div className="text-center py-10">
-          <p className="text-xl text-stone-600">Tu carrito está vacío.</p>
-          <Link to="/">
-            <Button variant="secondary" className="mt-4">Seguir Comprando</Button>
-          </Link>
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          <div className="lg:col-span-2 space-y-4">
-            {cart.map(item => (
-              <div key={item.product.id} className="flex items-center gap-4 p-4 border rounded-xl border-stone-200">
-                <img src={item.product.imageUrl} alt={item.product.name} className="w-24 h-24 object-cover rounded-md" />
-                <div className="flex-grow">
-                  <h2 className="font-semibold text-lg">{item.product.name}</h2>
-                  <p className="text-stone-500">${item.product.price.toLocaleString()}</p>
-                </div>
-                <div className="flex items-center gap-3">
-                  <button onClick={() => updateQuantity(item.product.id, item.quantity - 1)} className="p-1 rounded-full hover:bg-stone-200"><ICONS.Minus className="w-5 h-5"/></button>
-                  <span className="font-semibold w-6 text-center">{item.quantity}</span>
-                  <button onClick={() => updateQuantity(item.product.id, item.quantity + 1)} className="p-1 rounded-full hover:bg-stone-200"><ICONS.Plus className="w-5 h-5"/></button>
-                </div>
-                <p className="font-semibold w-24 text-right">${(item.product.price * item.quantity).toLocaleString()}</p>
-                <button onClick={() => removeFromCart(item.product.id)} className="text-red-500 hover:text-red-700">
-                  <ICONS.Trash className="w-6 h-6"/>
-                </button>
-              </div>
-            ))}
-          </div>
+            setIsLoading(true);
+            try {
+                let userProfile = await getUserProfile(user.uid);
+                
+                // --- ¡AQUÍ ESTÁ LA MAGIA! ---
+                // Si el perfil no existe en Firestore, lo creamos ahora mismo.
+                if (!userProfile) {
+                    console.log("Perfil no encontrado, creando uno nuevo...");
+                    await createUserProfile(user); // Creamos el perfil
+                    userProfile = await getUserProfile(user.uid); // Y lo volvemos a cargar
+                }
+                
+                setProfile(userProfile);
 
-          <div className="lg:col-span-1">
-            <div className="bg-stone-100 p-6 rounded-xl">
-              <h2 className="text-xl font-bold mb-4">Resumen del Pedido</h2>
-              <div className="space-y-2">
-                <div className="flex justify-between">
-                  <span>Subtotal</span>
-                  <span>${subtotal.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>Impuestos (8%)</span>
-                  <span>${taxes.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
-                </div>
-                <div className="flex justify-between font-bold text-lg border-t pt-2 mt-2 border-stone-300">
-                  <span>Total</span>
-                  <span>${total.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
-                </div>
-              </div>
-              <Button className="w-full mt-6">Finalizar Compra</Button>
-               <Link to="/" className="w-full block text-center mt-2 text-cyan-600 hover:underline text-sm">
-                  Seguir Comprando
-               </Link>
+            } catch (error) {
+                console.error("Error al obtener o crear el perfil:", error);
+                setProfile(null); // Aseguramos que el perfil sea nulo en caso de error
+            } finally {
+                setIsLoading(false);
+            }
+        };
+
+        loadProfile();
+    }, [user]); // La dependencia sigue siendo el usuario
+
+    // ... (el resto del componente se mantiene exactamente igual)
+    const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (!profile) return;
+        setProfile({ ...profile, [e.target.name]: e.target.value });
+    };
+    
+    const handleSaveChanges = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!user || !profile) return;
+        
+        try {
+            await updateUserProfile(user.uid, { name: profile.name, email: profile.email });
+            alert("Perfil actualizado con éxito");
+            setIsEditing(false);
+        } catch (error) {
+            console.error("Error al actualizar el perfil:", error);
+            alert("Hubo un error al guardar los cambios.");
+        }
+    };
+    
+    if (isLoading) {
+        return <div className="text-center p-8">Cargando perfil...</div>;
+    }
+    
+    if (!profile) {
+        return <div className="text-center p-8">No se pudo cargar el perfil del usuario. Por favor, intenta recargar la página.</div>;
+    }
+
+    const orders = [
+        { id: 'ORD-12345', date: '2024-05-20', total: 4200, status: 'Enviado', tracking: '1Z9999W99999999999' },
+        { id: 'ORD-12344', date: '2024-05-15', total: 2800, status: 'Entregado', tracking: null },
+    ];
+    
+    return (
+      <div className="space-y-8">
+            <div className="flex justify-between items-center">
+                <h1 className="text-3xl font-bold">Mi Perfil</h1>
+                <Button onClick={() => setIsEditing(!isEditing)} variant="secondary">
+                    {isEditing ? 'Cancelar' : 'Editar Perfil'}
+                </Button>
             </div>
-          </div>
+            <div className="bg-white p-6 rounded-xl shadow-sm border border-stone-200">
+                <h2 className="text-xl font-bold mb-4">Mi Información</h2>
+                <form className="space-y-4" onSubmit={handleSaveChanges}>
+                    <div>
+                        <label className="block text-sm font-medium">Nombre</label>
+                        <input 
+                            type="text" 
+                            name="name"
+                            value={profile.name} 
+                            onChange={handleInputChange}
+                            disabled={!isEditing}
+                            className="mt-1 block w-full rounded-md border-stone-300 shadow-sm bg-stone-50 disabled:bg-stone-200 disabled:text-stone-500"
+                        />
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium">Correo Electrónico</label>
+                        <input 
+                            type="email" 
+                            name="email"
+                            value={profile.email} 
+                            onChange={handleInputChange}
+                            disabled
+                            className="mt-1 block w-full rounded-md border-stone-300 shadow-sm bg-stone-200 text-stone-500"
+                        />
+                    </div>
+                    {isEditing && (
+                        <Button type="submit" variant="primary">Guardar Cambios</Button>
+                    )}
+                </form>
+            </div>
+            
+            <div className="bg-white p-6 rounded-xl shadow-sm border border-stone-200">
+                 <h2 className="text-xl font-bold mb-4">Mis Pedidos</h2>
+                <div className="overflow-x-auto">
+                    <table className="w-full text-left">
+                        <thead>
+                            <tr className="border-b border-stone-200">
+                                <th className="py-2">ID Pedido</th>
+                                <th className="py-2">Fecha</th>
+                                <th className="py-2">Total</th>
+                                <th className="py-2">Estado</th>
+                                <th className="py-2">Seguimiento</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {orders.map(order => (
+                                <tr key={order.id} className="border-b border-stone-200/50">
+                                    <td className="py-3">{order.id}</td>
+                                    <td className="py-3">{order.date}</td>
+                                    <td className="py-3">${order.total.toLocaleString()}</td>
+                                    <td className="py-3"><span className={`px-2 py-1 text-xs font-semibold rounded-full ${order.status === 'Enviado' ? 'bg-cyan-100 text-cyan-800' : 'bg-emerald-100 text-emerald-800'}`}>{order.status}</span></td>
+                                    <td className="py-3">{order.tracking ? <a href="#" className="text-cyan-500 hover:underline">{order.tracking}</a> : 'N/A'}</td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
         </div>
-      )}
-    </div>
-  );
+    );
 };
-
-export default CartPage;
+export default ProfilePage;

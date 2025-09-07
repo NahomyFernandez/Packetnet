@@ -28,13 +28,15 @@ interface CartContextType {
   removeFromCart: (productId: string) => void;
   updateQuantity: (productId: string, quantity: number) => void;
   itemCount: number;
+  clearCart: () => void;
 }
+
+
 const CartContext = createContext<CartContextType | null>(null);
 
 const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const isAuthenticated = !!user;
-
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
       setUser(firebaseUser);
@@ -53,7 +55,7 @@ const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => 
 
 const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [cart, setCart] = useState<CartItem[]>([]);
-
+  const clearCart = () => setCart([]);
   const addToCart = (product: Product, quantity: number) => {
     setCart(prevCart => {
       const existingItem = prevCart.find(item => item.product.id === product.id);
@@ -61,11 +63,12 @@ const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => 
         return prevCart.map(item =>
           item.product.id === product.id ? { ...item, quantity: item.quantity + quantity } : item
         );
-      }
-      return [...prevCart, { product, quantity }];
-    });
-  };
+      } 
+       const value = useMemo(() => ({ cart, addToCart, removeFromCart, updateQuantity, itemCount, clearCart }), [cart, itemCount]); 
 
+    return <CartContext.Provider value={value}>{children}</CartContext.Provider>;    });
+  };
+  
   const removeFromCart = (productId: string) => {
     setCart(prevCart => prevCart.filter(item => item.product.id !== productId));
   };
