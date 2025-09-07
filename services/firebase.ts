@@ -1,9 +1,9 @@
 // services/firebase.ts
 import { initializeApp } from "firebase/app";
-import { getAuth } from "firebase/auth";
-import { getFirestore } from "firebase/firestore"; // 1. Importar getFirestore
+// 1. IMPORTACIONES NECESARIAS
+import { getAuth, browserSessionPersistence, setPersistence } from "firebase/auth"; 
+import { getFirestore } from "firebase/firestore";
 
-// Tu configuración de Firebase que ya tenías
 const firebaseConfig = {
   apiKey: "AIzaSyChtYy2_bpqln4UMwDs4fQdDQlfhVo52GY",
   authDomain: "packetnet.firebaseapp.com",
@@ -14,9 +14,13 @@ const firebaseConfig = {
   measurementId: "G-PXNSSQKSJJ"
 };
 
-// Inicializa Firebase
 const app = initializeApp(firebaseConfig);
-
-// Exporta los servicios que usaremos
 export const auth = getAuth(app);
-export const db = getFirestore(app); // 2. Inicializar y exportar Firestore
+export const db = getFirestore(app);
+
+// 2. APLICAMOS LA PERSISTENCIA DE SESIÓN
+// Esto asegura que el usuario deba iniciar sesión cada vez que abra el navegador.
+setPersistence(auth, browserSessionPersistence)
+  .catch((error) => {
+    console.error("Error setting session persistence:", error);
+  });

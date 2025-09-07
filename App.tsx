@@ -8,7 +8,7 @@ import ProductDetailPage from './pages/ProductDetailPage';
 import CartPage from './pages/CartPage';
 import ProfilePage from './pages/ProfilePage';
 import ContactPage from './pages/ContactPage';
-import AboutUsPage from './pages/AboutUsPage'; // 1. Importar la nueva página
+import AboutUsPage from './pages/AboutUsPage';
 import Header from './components/layout/Header';
 import ChatWidget from './components/chat/ChatWidget';
 import React, { useState, createContext, useContext, useMemo, useEffect } from 'react';
@@ -128,7 +128,7 @@ const AppLayout: React.FC = () => {
                     <Route path="/cart" element={<CartPage />} />
                     <Route path="/profile" element={<ProfilePage />} />
                     <Route path="/contact" element={<ContactPage />} />
-                    <Route path="/about" element={<AboutUsPage />} /> {/* 2. Añadir la nueva ruta */}
+                    <Route path="/about" element={<AboutUsPage />} />
                     <Route path="*" element={<Navigate to="/start" />} />
                 </Routes>
             </main>
@@ -161,11 +161,24 @@ function App() {
 
 const Main = () => {
     const { isAuthenticated } = useAuth();
+    // 1. Estado para controlar si ya podemos redirigir
+    const [canRedirect, setCanRedirect] = useState(false);
+
+    // 2. Efecto que se ejecuta una sola vez para activar la redirección después de 2 segundos
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            setCanRedirect(true);
+        }, 2000); // 2000 milisegundos = 2 segundos
+
+        return () => clearTimeout(timer); // Limpieza al desmontar el componente
+    }, []);
+
     return (
         <Routes>
             {/* Rutas públicas */}
-            <Route path="/login" element={isAuthenticated ? <Navigate to="/start" /> : <LoginPage />} />
-            <Route path="/register" element={isAuthenticated ? <Navigate to="/start" /> : <RegisterPage />} />
+            {/* 3. La redirección ahora depende de si el usuario está autenticado Y si ya pasaron los 2 segundos */}
+            <Route path="/login" element={isAuthenticated && canRedirect ? <Navigate to="/start" /> : <LoginPage />} />
+            <Route path="/register" element={isAuthenticated && canRedirect ? <Navigate to="/start" /> : <RegisterPage />} />
 
             {/* Rutas protegidas */}
             <Route path="/*" element={<ProtectedRoute><AppLayout /></ProtectedRoute>} />
